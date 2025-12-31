@@ -76,3 +76,49 @@ UIS.InputBegan:Connect(function(i,gp)
 	if gp then return end
 	if i.KeyCode == Enum.KeyCode.W then move.f=1 end
 	if i.KeyCode == Enum.KeyCode.S then move.b=1
+local espBoxes = {}
+
+local function addESP(plr)
+	if plr.Character and not espBoxes[plr] then
+		local box = Instance.new("SelectionBox")
+		box.Adornee = plr.Character:FindFirstChild("HumanoidRootPart") or plr.Character:FindFirstChildWhichIsA("BasePart")
+		box.LineThickness = 0.1
+		box.Color3 = Color3.new(1,1,1) -- blanc
+		box.SurfaceTransparency = 1
+		box.Parent = workspace
+		espBoxes[plr] = box
+	end
+end
+
+local function removeESP(plr)
+	if espBoxes[plr] then
+		espBoxes[plr]:Destroy()
+		espBoxes[plr] = nil
+	end
+end
+
+espBtn.MouseButton1Click:Connect(function()
+	espOn = not espOn
+	espBtn.Text = "👁️ ESP : " .. (espOn and "ON" or "OFF")
+
+	if espOn then
+		for _, p in pairs(Players:GetPlayers()) do
+			if p ~= player then addESP(p) end
+		end
+	else
+		for _, p in pairs(Players:GetPlayers()) do
+			removeESP(p)
+		end
+	end
+end)
+
+-- Pour gérer les nouveaux joueurs qui arrivent
+Players.PlayerAdded:Connect(function(plr)
+	if espOn then
+		addESP(plr)
+	end
+end)
+
+Players.PlayerRemoving:Connect(function(plr)
+	removeESP(plr)
+end)
