@@ -4,10 +4,6 @@ local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
-local char = player.Character or player.CharacterAdded:Wait()
-local humanoid = char:WaitForChild("Humanoid")
-local hrp = char:WaitForChild("HumanoidRootPart")
-local cam = workspace.CurrentCamera
 
 -- VARIABLES
 local fly = false
@@ -19,13 +15,35 @@ local infJump = false
 local flySpeed = 60
 local walkSpeed = 16
 
+local char
+local humanoid
+local hrp
+local cam = workspace.CurrentCamera
+
+-- Fonction pour initialiser les références du personnage
+local function setupCharacter(newChar)
+	char = newChar
+	humanoid = char:WaitForChild("Humanoid")
+	hrp = char:WaitForChild("HumanoidRootPart")
+end
+
+-- Initial setup
+setupCharacter(player.Character or player.CharacterAdded:Wait())
+
+-- Réinitialisation après respawn
+player.CharacterAdded:Connect(function(newChar)
+	setupCharacter(newChar)
+end)
+
 -- ================= UI =================
-local gui = Instance.new("ScreenGui", player.PlayerGui)
+local playerGui = player:WaitForChild("PlayerGui")
+local gui = Instance.new("ScreenGui")
+gui.Parent = playerGui
 gui.ResetOnSpawn = false
 
 local main = Instance.new("Frame", gui)
-main.Size = UDim2.new(0, 320, 0, 340)
-main.Position = UDim2.new(0.5, -160, 0.5, -170)
+main.Size = UDim2.new(0, 320, 0, 360)
+main.Position = UDim2.new(0.5, -160, 0.5, -180)
 main.BackgroundColor3 = Color3.fromRGB(25,25,25)
 main.Active = true
 main.Draggable = true
@@ -75,50 +93,33 @@ local move = {f=0,b=0,l=0,r=0,u=0,d=0}
 UIS.InputBegan:Connect(function(i,gp)
 	if gp then return end
 	if i.KeyCode == Enum.KeyCode.W then move.f=1 end
-	if i.KeyCode == Enum.KeyCode.S then move.b=1
-local espBoxes = {}
+	if i.KeyCode == Enum.KeyCode.S then move.b=1 end
+	if i.KeyCode == Enum.KeyCode.A then move.l=1 end
+	if i.KeyCode == Enum.KeyCode.D then move.r=1 end
+	if i.KeyCode == Enum.KeyCode.E then move.u=1 end
+	if i.KeyCode == Enum.KeyCode.Q then move.d=1 end
+end)
 
-local function addESP(plr)
-	if plr.Character and not espBoxes[plr] then
-		local box = Instance.new("SelectionBox")
-		box.Adornee = plr.Character:FindFirstChild("HumanoidRootPart") or plr.Character:FindFirstChildWhichIsA("BasePart")
-		box.LineThickness = 0.1
-		box.Color3 = Color3.new(1,1,1) -- blanc
-		box.SurfaceTransparency = 1
-		box.Parent = workspace
-		espBoxes[plr] = box
-	end
-end
+UIS.InputEnded:Connect(function(i)
+	if i.KeyCode == Enum.KeyCode.W then move.f=0 end
+	if i.KeyCode == Enum.KeyCode.S then move.b=0 end
+	if i.KeyCode == Enum.KeyCode.A then move.l=0 end
+	if i.KeyCode == Enum.KeyCode.D then move.r=0 end
+	if i.KeyCode == Enum.KeyCode.E then move.u=0 end
+	if i.KeyCode == Enum.KeyCode.Q then move.d=0 end
+end)
 
-local function removeESP(plr)
-	if espBoxes[plr] then
-		espBoxes[plr]:Destroy()
-		espBoxes[plr] = nil
-	end
-end
+RunService.RenderStepped:Connect(function()
+	if fly and bv then
+		local dir =
+			cam.CFrame.LookVector * (move.f - move.b) +
+			cam.CFrame.RightVector * (move.r - move.l) +
+			Vector3.new(0, move.u - move.d, 0)
 
-espBtn.MouseButton1Click:Connect(function()
-	espOn = not espOn
-	espBtn.Text = "👁️ ESP : " .. (espOn and "ON" or "OFF")
-
-	if espOn then
-		for _, p in pairs(Players:GetPlayers()) do
-			if p ~= player then addESP(p) end
-		end
-	else
-		for _, p in pairs(Players:GetPlayers()) do
-			removeESP(p)
-		end
+		bv.Velocity = dir.Magnitude > 0 and dir.Unit * flySpeed or Vector3.zero
 	end
 end)
 
--- Pour gérer les nouveaux joueurs qui arrivent
-Players.PlayerAdded:Connect(function(plr)
-	if espOn then
-		addESP(plr)
-	end
-end)
-
-Players.PlayerRemoving:Connect(function(plr)
-	removeESP(plr)
-end)
+flyBtn.MouseButton1Click:Connect(function()
+	fly = not fly
+	flyBtn.Text = "✈️ Fly : " .. (fly and "ON" or "OFF")
