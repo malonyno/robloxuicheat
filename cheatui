@@ -1,144 +1,78 @@
 -- SERVICES
 local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
+local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
-local humanoid = character:WaitForChild("Humanoid")
-local root = character:WaitForChild("HumanoidRootPart")
+local char = player.Character or player.CharacterAdded:Wait()
+local humanoid = char:WaitForChild("Humanoid")
+local hrp = char:WaitForChild("HumanoidRootPart")
+local cam = workspace.CurrentCamera
 
 -- VARIABLES
-local flyEnabled = false
-local noclipEnabled = false
-local espEnabled = false
-local speedEnabled = false
-local flySpeed = 50
+local fly = false
+local noclip = false
+local speedOn = false
+local espOn = false
+local infJump = false
+
+local flySpeed = 60
 local walkSpeed = 16
 
--- GUI
+-- ================= UI =================
 local gui = Instance.new("ScreenGui", player.PlayerGui)
 gui.ResetOnSpawn = false
 
-local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0, 300, 0, 260)
-frame.Position = UDim2.new(0.5, -150, 0.5, -130)
-frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
-frame.Active = true
-frame.Draggable = true
+local main = Instance.new("Frame", gui)
+main.Size = UDim2.new(0, 320, 0, 340)
+main.Position = UDim2.new(0.5, -160, 0.5, -170)
+main.BackgroundColor3 = Color3.fromRGB(25,25,25)
+main.Active = true
+main.Draggable = true
+Instance.new("UICorner", main).CornerRadius = UDim.new(0,12)
 
-local function createButton(text, y)
-	local b = Instance.new("TextButton", frame)
-	b.Size = UDim2.new(1, -20, 0, 30)
-	b.Position = UDim2.new(0, 10, 0, y)
-	b.Text = text
-	b.BackgroundColor3 = Color3.fromRGB(50,50,50)
+local title = Instance.new("TextLabel", main)
+title.Size = UDim2.new(1,0,0,40)
+title.Text = "⚙️ Roblox Cheat UI"
+title.TextColor3 = Color3.new(1,1,1)
+title.BackgroundTransparency = 1
+title.Font = Enum.Font.GothamBold
+title.TextSize = 16
+
+local function button(txt, y)
+	local b = Instance.new("TextButton", main)
+	b.Size = UDim2.new(1,-20,0,32)
+	b.Position = UDim2.new(0,10,0,y)
+	b.Text = txt
+	b.BackgroundColor3 = Color3.fromRGB(45,45,45)
 	b.TextColor3 = Color3.new(1,1,1)
+	b.Font = Enum.Font.Gotham
+	b.TextSize = 14
+	Instance.new("UICorner", b)
 	return b
 end
 
-local flyBtn = createButton("Fly : OFF", 10)
-local speedBtn = createButton("Speed : OFF", 50)
-local espBtn = createButton("ESP : OFF", 90)
-local noclipBtn = createButton("Noclip : OFF", 130)
+local flyBtn    = button("✈️ Fly : OFF",        50)
+local speedBtn  = button("⚡ Speed : OFF",      90)
+local espBtn    = button("👁️ ESP : OFF",       130)
+local noclipBtn = button("🚪 Noclip : OFF",     170)
+local jumpBtn   = button("🦘 Infinite Jump : OFF", 210)
 
--- SLIDER SPEED
-local speedBox = Instance.new("TextBox", frame)
-speedBox.Size = UDim2.new(1, -20, 0, 30)
-speedBox.Position = UDim2.new(0, 10, 0, 170)
-speedBox.Text = "Vitesse (ex: 50)"
+local speedBox = Instance.new("TextBox", main)
+speedBox.Size = UDim2.new(1,-20,0,32)
+speedBox.Position = UDim2.new(0,10,0,250)
+speedBox.Text = "Vitesse (ex: 60)"
 speedBox.TextColor3 = Color3.new(1,1,1)
 speedBox.BackgroundColor3 = Color3.fromRGB(40,40,40)
+speedBox.Font = Enum.Font.Gotham
+speedBox.TextSize = 14
+Instance.new("UICorner", speedBox)
 
--- FLY
-local bv, bg
-RunService.RenderStepped:Connect(function()
-	if flyEnabled then
-		local cam = workspace.CurrentCamera
-		bv.Velocity = cam.CFrame.LookVector * flySpeed
-	end
-end)
+-- ================= FLY =================
+local bv
+local move = {f=0,b=0,l=0,r=0,u=0,d=0}
 
-flyBtn.MouseButton1Click:Connect(function()
-	flyEnabled = not flyEnabled
-	flyBtn.Text = "Fly : " .. (flyEnabled and "ON" or "OFF")
-
-	if flyEnabled then
-		bv = Instance.new("BodyVelocity", root)
-		bv.MaxForce = Vector3.new(1e5,1e5,1e5)
-	else
-		if bv then bv:Destroy() end
-	end
-end)
-
--- SPEED
-speedBtn.MouseButton1Click:Connect(function()
-	speedEnabled = not speedEnabled
-	speedBtn.Text = "Speed : " .. (speedEnabled and "ON" or "OFF")
-	humanoid.WalkSpeed = speedEnabled and walkSpeed or 16
-end)
-
-speedBox.FocusLost:Connect(function()
-	local n = tonumber(speedBox.Text)
-	if n then
-		walkSpeed = n
-		if speedEnabled then
-			humanoid.WalkSpeed = n
-		end
-	end
-end)
-
--- NOCLIP
-RunService.Stepped:Connect(function()
-	if noclipEnabled then
-		for _,v in pairs(character:GetDescendants()) do
-			if v:IsA("BasePart") then
-				v.CanCollide = false
-			end
-		end
-	end
-end)
-
-noclipBtn.MouseButton1Click:Connect(function()
-	noclipEnabled = not noclipEnabled
-	noclipBtn.Text = "Noclip : " .. (noclipEnabled and "ON" or "OFF")
-end)
-
--- ESP
-local espObjects = {}
-
-local function createESP(plr)
-	if plr.Character and plr.Character:FindFirstChild("Head") then
-		local billboard = Instance.new("BillboardGui")
-		billboard.Size = UDim2.new(0,100,0,40)
-		billboard.Adornee = plr.Character.Head
-		billboard.AlwaysOnTop = true
-
-		local txt = Instance.new("TextLabel", billboard)
-		txt.Size = UDim2.new(1,0,1,0)
-		txt.Text = plr.Name
-		txt.BackgroundTransparency = 1
-		txt.TextColor3 = Color3.new(1,0,0)
-
-		billboard.Parent = gui
-		espObjects[plr] = billboard
-	end
-end
-
-espBtn.MouseButton1Click:Connect(function()
-	espEnabled = not espEnabled
-	espBtn.Text = "ESP : " .. (espEnabled and "ON" or "OFF")
-
-	if espEnabled then
-		for _,plr in pairs(Players:GetPlayers()) do
-			if plr ~= player then
-				createESP(plr)
-			end
-		end
-	else
-		for _,v in pairs(espObjects) do
-			v:Destroy()
-		end
-		espObjects = {}
-	end
-end)
+UIS.InputBegan:Connect(function(i,gp)
+	if gp then return end
+	if i.KeyCode == Enum.KeyCode.W then move.f=1 end
+	if i.KeyCode == Enum.KeyCode.S then move.b=1
