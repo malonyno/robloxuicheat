@@ -2,15 +2,16 @@
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
 
 local player = Players.LocalPlayer
 
 -- VARIABLES
 local fly = false
 local noclip = false
-local speedOn = false
 local espOn = false
 local infJump = false
+local speedOn = false
 
 local flySpeed = 60
 local walkSpeed = 16
@@ -19,12 +20,19 @@ local char
 local humanoid
 local hrp
 local cam = workspace.CurrentCamera
+local bv
 
--- Fonction pour initialiser les références du personnage
+local move = {f=0, b=0, l=0, r=0, u=0, d=0}
+
+local espFolder = Instance.new("Folder")
+espFolder.Name = "ESP_Folder"
+espFolder.Parent = player:WaitForChild("PlayerGui")
+
+-- Fonction pour initialiser le personnage
 local function setupCharacter(newChar)
-	char = newChar
-	humanoid = char:WaitForChild("Humanoid")
-	hrp = char:WaitForChild("HumanoidRootPart")
+    char = newChar
+    humanoid = char:WaitForChild("Humanoid")
+    hrp = char:WaitForChild("HumanoidRootPart")
 end
 
 -- Initial setup
@@ -32,7 +40,7 @@ setupCharacter(player.Character or player.CharacterAdded:Wait())
 
 -- Réinitialisation après respawn
 player.CharacterAdded:Connect(function(newChar)
-	setupCharacter(newChar)
+    setupCharacter(newChar)
 end)
 
 -- ================= UI =================
@@ -42,8 +50,8 @@ gui.Parent = playerGui
 gui.ResetOnSpawn = false
 
 local main = Instance.new("Frame", gui)
-main.Size = UDim2.new(0, 320, 0, 360)
-main.Position = UDim2.new(0.5, -160, 0.5, -180)
+main.Size = UDim2.new(0, 350, 0, 420)
+main.Position = UDim2.new(0.5, -175, 0.5, -210)
 main.BackgroundColor3 = Color3.fromRGB(25,25,25)
 main.Active = true
 main.Draggable = true
@@ -58,24 +66,26 @@ title.Font = Enum.Font.GothamBold
 title.TextSize = 16
 
 local function button(txt, y)
-	local b = Instance.new("TextButton", main)
-	b.Size = UDim2.new(1,-20,0,32)
-	b.Position = UDim2.new(0,10,0,y)
-	b.Text = txt
-	b.BackgroundColor3 = Color3.fromRGB(45,45,45)
-	b.TextColor3 = Color3.new(1,1,1)
-	b.Font = Enum.Font.Gotham
-	b.TextSize = 14
-	Instance.new("UICorner", b)
-	return b
+    local b = Instance.new("TextButton", main)
+    b.Size = UDim2.new(1,-20,0,32)
+    b.Position = UDim2.new(0,10,0,y)
+    b.Text = txt
+    b.BackgroundColor3 = Color3.fromRGB(45,45,45)
+    b.TextColor3 = Color3.new(1,1,1)
+    b.Font = Enum.Font.Gotham
+    b.TextSize = 14
+    Instance.new("UICorner", b)
+    return b
 end
 
-local flyBtn    = button("✈️ Fly : OFF",        50)
-local speedBtn  = button("⚡ Speed : OFF",      90)
-local espBtn    = button("👁️ ESP : OFF",       130)
-local noclipBtn = button("🚪 Noclip : OFF",     170)
+-- Buttons
+local flyBtn    = button("✈️ Fly : OFF", 50)
+local speedBtn  = button("⚡ Speed : OFF", 90)
+local espBtn    = button("👁️ ESP : OFF", 130)
+local noclipBtn = button("🚪 Noclip : OFF", 170)
 local jumpBtn   = button("🦘 Infinite Jump : OFF", 210)
 
+-- Speed input
 local speedBox = Instance.new("TextBox", main)
 speedBox.Size = UDim2.new(1,-20,0,32)
 speedBox.Position = UDim2.new(0,10,0,250)
@@ -87,39 +97,155 @@ speedBox.TextSize = 14
 Instance.new("UICorner", speedBox)
 
 -- ================= FLY =================
-local bv
-local move = {f=0,b=0,l=0,r=0,u=0,d=0}
-
 UIS.InputBegan:Connect(function(i,gp)
-	if gp then return end
-	if i.KeyCode == Enum.KeyCode.W then move.f=1 end
-	if i.KeyCode == Enum.KeyCode.S then move.b=1 end
-	if i.KeyCode == Enum.KeyCode.A then move.l=1 end
-	if i.KeyCode == Enum.KeyCode.D then move.r=1 end
-	if i.KeyCode == Enum.KeyCode.E then move.u=1 end
-	if i.KeyCode == Enum.KeyCode.Q then move.d=1 end
+    if gp then return end
+    if i.KeyCode == Enum.KeyCode.W then move.f=1 end
+    if i.KeyCode == Enum.KeyCode.S then move.b=1 end
+    if i.KeyCode == Enum.KeyCode.A then move.l=1 end
+    if i.KeyCode == Enum.KeyCode.D then move.r=1 end
+    if i.KeyCode == Enum.KeyCode.E then move.u=1 end
+    if i.KeyCode == Enum.KeyCode.Q then move.d=1 end
+    -- Infinite Jump
+    if infJump and i.KeyCode == Enum.KeyCode.Space and humanoid then
+        humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+    end
 end)
 
 UIS.InputEnded:Connect(function(i)
-	if i.KeyCode == Enum.KeyCode.W then move.f=0 end
-	if i.KeyCode == Enum.KeyCode.S then move.b=0 end
-	if i.KeyCode == Enum.KeyCode.A then move.l=0 end
-	if i.KeyCode == Enum.KeyCode.D then move.r=0 end
-	if i.KeyCode == Enum.KeyCode.E then move.u=0 end
-	if i.KeyCode == Enum.KeyCode.Q then move.d=0 end
+    if i.KeyCode == Enum.KeyCode.W then move.f=0 end
+    if i.KeyCode == Enum.KeyCode.S then move.b=0 end
+    if i.KeyCode == Enum.KeyCode.A then move.l=0 end
+    if i.KeyCode == Enum.KeyCode.D then move.r=0 end
+    if i.KeyCode == Enum.KeyCode.E then move.u=0 end
+    if i.KeyCode == Enum.KeyCode.Q then move.d=0 end
 end)
 
 RunService.RenderStepped:Connect(function()
-	if fly and bv then
-		local dir =
-			cam.CFrame.LookVector * (move.f - move.b) +
-			cam.CFrame.RightVector * (move.r - move.l) +
-			Vector3.new(0, move.u - move.d, 0)
-
-		bv.Velocity = dir.Magnitude > 0 and dir.Unit * flySpeed or Vector3.zero
-	end
+    -- Fly movement
+    if fly and bv and hrp then
+        local dir =
+            cam.CFrame.LookVector * (move.f - move.b) +
+            cam.CFrame.RightVector * (move.r - move.l) +
+            Vector3.new(0, move.u - move.d, 0)
+        bv.Velocity = dir.Magnitude > 0 and dir.Unit * flySpeed or Vector3.zero
+    end
+    -- Noclip
+    if noclip and char then
+        for _, part in pairs(char:GetChildren()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
+            end
+        end
+    elseif char then
+        for _, part in pairs(char:GetChildren()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = true
+            end
+        end
+    end
 end)
 
+-- ================= BUTTONS =================
+-- Fly
 flyBtn.MouseButton1Click:Connect(function()
-	fly = not fly
-	flyBtn.Text = "✈️ Fly : " .. (fly and "ON" or "OFF")
+    fly = not fly
+    flyBtn.Text = "✈️ Fly : " .. (fly and "ON" or "OFF")
+    if fly then
+        if hrp then
+            bv = Instance.new("BodyVelocity")
+            bv.MaxForce = Vector3.new(1e5,1e5,1e5)
+            bv.Velocity = Vector3.zero
+            bv.Parent = hrp
+        end
+    else
+        if bv then bv:Destroy() bv = nil end
+    end
+end)
+
+-- Speed
+speedBtn.MouseButton1Click:Connect(function()
+    speedOn = not speedOn
+    speedBtn.Text = "⚡ Speed : " .. (speedOn and "ON" or "OFF")
+    if speedOn and humanoid then
+        local val = tonumber(speedBox.Text)
+        if val then
+            humanoid.WalkSpeed = val
+        end
+    elseif humanoid then
+        humanoid.WalkSpeed = walkSpeed
+    end
+end)
+
+speedBox.FocusLost:Connect(function()
+    if speedOn and humanoid then
+        local val = tonumber(speedBox.Text)
+        if val then
+            humanoid.WalkSpeed = val
+        end
+    end
+end)
+
+-- Infinite Jump
+jumpBtn.MouseButton1Click:Connect(function()
+    infJump = not infJump
+    jumpBtn.Text = "🦘 Infinite Jump : " .. (infJump and "ON" or "OFF")
+end)
+
+-- Noclip
+noclipBtn.MouseButton1Click:Connect(function()
+    noclip = not noclip
+    noclipBtn.Text = "🚪 Noclip : " .. (noclip and "ON" or "OFF")
+end)
+
+-- ESP
+local function createESP(player)
+    if player == player then return end
+    local espFrame = Instance.new("BillboardGui")
+    espFrame.Name = "ESP_"..player.Name
+    espFrame.Size = UDim2.new(0,200,0,50)
+    espFrame.AlwaysOnTop = true
+    espFrame.Parent = espFolder
+
+    local text = Instance.new("TextLabel")
+    text.Size = UDim2.new(1,0,1,0)
+    text.BackgroundTransparency = 1
+    text.TextColor3 = Color3.new(1,0,0)
+    text.Font = Enum.Font.GothamBold
+    text.TextSize = 16
+    text.Text = player.Name
+    text.Parent = espFrame
+
+    local charClone = player.Character:Clone()
+    for _, part in pairs(charClone:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.Transparency = 0.5
+            part.CanCollide = false
+            part.Anchored = true
+        end
+    end
+    charClone.Parent = espFrame
+    espFrame.Adornee = player.Character:FindFirstChild("HumanoidRootPart")
+end
+
+espBtn.MouseButton1Click:Connect(function()
+    espOn = not espOn
+    espBtn.Text = "👁️ ESP : " .. (espOn and "ON" or "OFF")
+    if espOn then
+        for _, p in pairs(Players:GetPlayers()) do
+            if p.Character and not espFolder:FindFirstChild("ESP_"..p.Name) then
+                createESP(p)
+            end
+        end
+    else
+        espFolder:ClearAllChildren()
+    end
+end)
+
+-- Update ESP when a new player joins
+Players.PlayerAdded:Connect(function(p)
+    if espOn then
+        p.CharacterAdded:Connect(function()
+            createESP(p)
+        end)
+    end
+end)
